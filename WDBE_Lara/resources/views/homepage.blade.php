@@ -28,76 +28,27 @@
                 <p class="section-subtitle">Handpicked selections rotating daily</p>
                 
                 @php
-                    $vinylCatalog = [
-                        [
-                            "title" => "Abbey Road",
-                            "artist" => "The Beatles",
-                            "price" => 29.99,
-                            "category" => "Rock",
-                            "image" => "https://via.placeholder.com/300x300?text=Abbey+Road",
-                            "description" => "The eleventh studio album by The Beatles, featuring iconic tracks like 'Come Together' and 'Here Comes the Sun'. This masterpiece showcases the band's musical maturity and remains one of the best-selling albums of all time."
-                        ],
-                        [
-                            "title" => "Thriller",
-                            "artist" => "Michael Jackson",
-                            "price" => 24.99,
-                            "category" => "Pop",
-                            "image" => "https://via.placeholder.com/300x300?text=Thriller",
-                            "description" => "The best-selling album of all time, Thriller revolutionized pop music with its innovative production and unforgettable hits. Features classics like 'Billie Jean', 'Beat It', and the title track 'Thriller'."
-                        ],
-                        [
-                            "title" => "Back in Black",
-                            "artist" => "AC/DC",
-                            "price" => 27.50,
-                            "category" => "Rock",
-                            "image" => "https://via.placeholder.com/300x300?text=Back+in+Black",
-                            "description" => "A tribute to their late lead singer Bon Scott, this hard rock masterpiece features powerful riffs and anthemic choruses. Home to classics like 'You Shook Me All Night Long' and the title track."
-                        ],
-                        [
-                            "title" => "Kind of Blue",
-                            "artist" => "Miles Davis",
-                            "price" => 22.99,
-                            "category" => "Jazz",
-                            "image" => "https://via.placeholder.com/300x300?text=Kind+of+Blue",
-                            "description" => "Regarded as one of the greatest jazz albums ever made, this modal jazz masterpiece features an all-star lineup including John Coltrane and Bill Evans. A timeless exploration of improvisation and melody."
-                        ],
-                        [
-                            "title" => "Nevermind",
-                            "artist" => "Nirvana",
-                            "price" => 28.50,
-                            "category" => "Rock",
-                            "image" => "https://via.placeholder.com/300x300?text=Nevermind",
-                            "description" => "The album that brought grunge to the mainstream, featuring the iconic 'Smells Like Teen Spirit'. Nevermind captures the raw energy and angst of a generation with its powerful lyrics and distorted guitars."
-                        ],
-                        [
-                            "title" => "The Miseducation",
-                            "artist" => "Lauryn Hill",
-                            "price" => 26.99,
-                            "category" => "R&B",
-                            "image" => "https://via.placeholder.com/300x300?text=Lauryn+Hill",
-                            "description" => "Lauryn Hill's groundbreaking debut solo album blends R&B, hip-hop, soul, and reggae. Winner of five Grammy Awards, it features deeply personal lyrics and innovative production that influenced a generation."
-                        ],
-                        [
-                            "title" => "Electric Ladyland",
-                            "artist" => "Jimi Hendrix",
-                            "price" => 30.00,
-                            "category" => "Electronic",
-                            "image" => "https://via.placeholder.com/300x300?text=Electric+Ladyland",
-                            "description" => "Jimi Hendrix's psychedelic rock masterpiece showcases his innovative guitar work and experimental production. Features the epic 'Voodoo Child' and demonstrates Hendrix's genius as both performer and producer."
-                        ],
-                        [
-                            "title" => "AM",
-                            "artist" => "Arctic Monkeys",
-                            "price" => 29.00,
-                            "category" => "Rock",
-                            "image" => "https://via.placeholder.com/300x300?text=Arctic+Monkeys+AM",
-                            "description" => "Arctic Monkeys' fifth studio album features a darker, more mature sound with heavy riffs and hip-hop influences. Home to hits like 'Do I Wanna Know?' and 'R U Mine?', it's their most commercially successful release."
-                        ]
-                    ];
+                    // Fetch products from database
+                    $products = DB::table('products')
+                        ->where('stock', '>', 0)
+                        ->inRandomOrder()
+                        ->limit(6)
+                        ->get();
                     
-                    // Randomize the catalog and select featured items
-                    shuffle($vinylCatalog);
-                    $featuredVinylRecords = array_slice($vinylCatalog, 0, 6);
+                    // Map database fields to display format
+                    $featuredVinylRecords = $products->map(function($product) {
+                        return [
+                            'id' => $product->id,
+                            'title' => $product->productName,
+                            'artist' => $product->Artist,
+                            'price' => $product->Price,
+                            'category' => $product->genre,
+                            'image' => asset('images/album-cover/' . $product->productName . '.jpg'),
+                            'description' => "Album featuring {$product->songAmount} tracks. Available in stock: {$product->stock} units.",
+                            'songAmount' => $product->songAmount,
+                            'stock' => $product->stock
+                        ];
+                    })->toArray();
                 @endphp
 
                 <div class="product-catalog-grid">
@@ -116,11 +67,12 @@
                             </div>
                             <div class="product-card__footer">
                                 <p class="product-card__price">${{ number_format($vinylRecord['price'], 2) }}</p>
-                                <!-- Replace the product card actions section in your home page -->
-                            <div class="product-card__actions">
-                            <button onclick="addToCart('{{ addslashes($vinylRecord['title']) }}', '{{ addslashes($vinylRecord['artist']) }}', '{{ $vinylRecord['price'] }}', '{{ $vinylRecord['image'] }}')" class="button button--add-to-cart">Add to Basket</button>
-                            <button onclick="showVinylInfo('{{ addslashes($vinylRecord['title']) }}', '{{ addslashes($vinylRecord['artist']) }}', '{{ $vinylRecord['price'] }}', '{{ addslashes($vinylRecord['category']) }}', '{{ $vinylRecord['image'] }}', '{{ addslashes($vinylRecord['description']) }}')" class="button button--info">info</button>
-                            </div>
+                                <div class="product-card__actions">
+                                    @if(Session::has('user_id'))
+                                        <button onclick="addToCart('{{ addslashes($vinylRecord['title']) }}', '{{ addslashes($vinylRecord['artist']) }}', '{{ $vinylRecord['price'] }}', '{{ $vinylRecord['image'] }}')" class="button button--add-to-cart">Add to Basket</button>
+                                    @endif
+                                    <button onclick="showVinylInfo('{{ addslashes($vinylRecord['title']) }}', '{{ addslashes($vinylRecord['artist']) }}', '{{ $vinylRecord['price'] }}', '{{ addslashes($vinylRecord['category']) }}', '{{ $vinylRecord['image'] }}', '{{ addslashes($vinylRecord['description']) }}')" class="button button--info">info</button>
+                                </div>
                             </div>
                         </div>
                     </article>

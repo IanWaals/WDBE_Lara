@@ -5,22 +5,24 @@
         <a href="/products" class="nav-link">Products</a>
         <a href="/about" class="nav-link">About</a>
         <a href="/contact" class="nav-link">Contact</a>
-        <a href="/admin" class="nav-link">admin</a>
         
-        @guest
-            <a href="#" class="nav-link nav-link--login" onclick="showLoginModal(event)">Login</a>
+        @if(Session::has('user_id'))
+            <!-- Show Admin link only if user has admin role -->
+            @if(Session::get('role') === 'admin')
+                <a href="/admin" class="nav-link">Admin</a>
+            @endif
+            
+            <!-- Show username and logout when logged in -->
+            <a href="/logout" class="nav-link">Logout</a>
+
+            <!-- Shopping Cart Button -->
+            <button onclick="toggleCart()" class="nav-link cart-button">
+                🛒 Cart (<span id="cartCount">0</span>)
+            </button>
         @else
-            <a href="#" class="nav-link">{{ Auth::user()->name }}</a>
-            <form action="{{ route('logout') }}" method="POST" style="display: inline;">
-                @csrf
-                <button type="submit" class="nav-link nav-link--logout">Logout</button>
-            </form>
-        @endguest
-        
-        <!-- Shopping Cart Button -->
-        <button onclick="toggleCart()" class="nav-link cart-button">
-            🛒 Cart (<span id="cartCount">0</span>)
-        </button>
+            <!-- Show login when not logged in -->
+            <a href="#" onclick="showLoginModal(event)" class="nav-link">Login</a>
+        @endif
     </nav>
 </header>
 

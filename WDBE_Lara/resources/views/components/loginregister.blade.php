@@ -1,3 +1,16 @@
+<!-- Display error/success messages -->
+@if(session('error'))
+    <div class="alert alert-error" style="background: #fee; color: #c33; padding: 1rem; margin: 1rem; border-radius: 8px;">
+        {{ session('error') }}
+    </div>
+@endif
+
+@if(session('success'))
+    <div class="alert alert-success" style="background: #efe; color: #3c3; padding: 1rem; margin: 1rem; border-radius: 8px;">
+        {{ session('success') }}
+    </div>
+@endif
+
 <!-- Login Modal -->
 <div id="loginModal" class="modal-overlay">
     <div class="login-modal">
@@ -15,8 +28,12 @@
                     name="email" 
                     class="form-input" 
                     placeholder="your@email.com" 
+                    value="{{ old('email') }}"
                     required
                 >
+                @error('email')
+                    <span style="color: red; font-size: 0.875rem;">{{ $message }}</span>
+                @enderror
             </div>
             
             <div class="form-group">
@@ -29,6 +46,9 @@
                     placeholder="Enter your password" 
                     required
                 >
+                @error('password')
+                    <span style="color: red; font-size: 0.875rem;">{{ $message }}</span>
+                @enderror
             </div>
             
             <div class="form-actions">
@@ -59,8 +79,12 @@
                     name="name" 
                     class="form-input" 
                     placeholder="Your name" 
+                    value="{{ old('name') }}"
                     required
                 >
+                @error('name')
+                    <span style="color: red; font-size: 0.875rem;">{{ $message }}</span>
+                @enderror
             </div>
             
             <div class="form-group">
@@ -71,8 +95,28 @@
                     name="email" 
                     class="form-input" 
                     placeholder="your@email.com" 
+                    value="{{ old('email') }}"
                     required
                 >
+                @error('email')
+                    <span style="color: red; font-size: 0.875rem;">{{ $message }}</span>
+                @enderror
+            </div>
+            
+            <div class="form-group">
+                <label for="register-phone" class="form-label">Phone Number</label>
+                <input 
+                    type="tel" 
+                    id="register-phone" 
+                    name="phone" 
+                    class="form-input" 
+                    placeholder="+31 6 12345678" 
+                    value="{{ old('phone') }}"
+                    required
+                >
+                @error('phone')
+                    <span style="color: red; font-size: 0.875rem;">{{ $message }}</span>
+                @enderror
             </div>
             
             <div class="form-group">
@@ -85,6 +129,9 @@
                     placeholder="Create a password" 
                     required
                 >
+                @error('password')
+                    <span style="color: red; font-size: 0.875rem;">{{ $message }}</span>
+                @enderror
             </div>
             
             <div class="form-group">
@@ -97,6 +144,9 @@
                     placeholder="Confirm your password" 
                     required
                 >
+                @error('password_confirmation')
+                    <span style="color: red; font-size: 0.875rem;">{{ $message }}</span>
+                @enderror
             </div>
             
             <div class="form-actions">
@@ -155,4 +205,17 @@
             hideRegisterModal();
         }
     });
+
+    // Show modals if there are errors (reopen after form submission)
+    @if($errors->has('email') || $errors->has('password'))
+        document.addEventListener('DOMContentLoaded', function() {
+            showLoginModal();
+        });
+    @endif
+
+    @if($errors->has('name') || $errors->has('phone') || $errors->has('password_confirmation'))
+        document.addEventListener('DOMContentLoaded', function() {
+            showRegisterModal();
+        });
+    @endif
 </script>

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
 
 class PageController extends Controller
 {
@@ -30,7 +32,12 @@ class PageController extends Controller
 
     public function admin()
     {
-        return view('admin'); // looks for resources/views/admin.blade.php
+        // Fetch all products from database
+        $products = DB::table('products')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('admin', compact('products'));
     }
 
     public function contact()

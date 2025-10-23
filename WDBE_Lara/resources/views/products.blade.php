@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vinyl Vibes - Shop</title>
     @vite('resources/css/app.css')
-
 </head>
 <body>
     <div class="site-container">
@@ -17,16 +16,17 @@
                 <h2 class="section-title">Browse by Category</h2>
                 <div class="category-filter-grid">
                     @php
-                        $availableCategories = [
-                            'All','Rap/HipHop','Rock','Heavy Metal','Pop',
-                            'R&B','Soul','Country','Electronic','Jazz','Classical'
-                        ];
+                        // Fetch all genres from database and get their names
+                        $availableCategories = ['All']; // Start with 'All'
+                        $genres = \App\Models\Genre::all()->pluck('genreName')->toArray();
+                        $availableCategories = array_merge($availableCategories, $genres);
                     @endphp
                     @foreach($availableCategories as $categoryName)
                     <button 
-                        class="category-filter-button" 
+                        class="category-filter-button {{ $categoryName === 'All' ? 'active' : '' }}" 
                         data-category="{{ $categoryName }}"
                         aria-label="Filter by {{ $categoryName }}"
+                        onclick="filterByCategory('{{ $categoryName }}')"
                     >
                         {{ $categoryName }}
                     </button>
@@ -37,72 +37,25 @@
             <!-- Product Catalog Section -->
             <section id="shop" class="product-catalog-section">
                 @php
-                    $vinylProductCatalog = [
-                        [
-                            "title" => "Abbey Road",
-                            "artist" => "The Beatles",
-                            "price" => 29.99,
-                            "category" => "Rock",
-                            "image" => "https://via.placeholder.com/300x300?text=Abbey+Road",
-                            "description" => "The eleventh studio album by The Beatles, featuring 'Come Together' and 'Here Comes the Sun'."
-                        ],
-                        [
-                            "title" => "Thriller",
-                            "artist" => "Michael Jackson",
-                            "price" => 24.99,
-                            "category" => "Pop",
-                            "image" => "https://via.placeholder.com/300x300?text=Thriller",
-                            "description" => "The best-selling album ever, including 'Billie Jean' and 'Beat It'."
-                        ],
-                        [
-                            "title" => "Back in Black",
-                            "artist" => "AC/DC",
-                            "price" => 27.50,
-                            "category" => "Rock",
-                            "image" => "https://via.placeholder.com/300x300?text=Back+in+Black",
-                            "description" => "A hard rock classic dedicated to Bon Scott. Features 'You Shook Me All Night Long'."
-                        ],
-                        [
-                            "title" => "Kind of Blue",
-                            "artist" => "Miles Davis",
-                            "price" => 22.99,
-                            "category" => "Jazz",
-                            "image" => "https://via.placeholder.com/300x300?text=Kind+of+Blue",
-                            "description" => "A timeless jazz masterpiece featuring John Coltrane and Bill Evans."
-                        ],
-                        [
-                            "title" => "Nevermind",
-                            "artist" => "Nirvana",
-                            "price" => 28.50,
-                            "category" => "Rock",
-                            "image" => "https://via.placeholder.com/300x300?text=Nevermind",
-                            "description" => "The grunge-defining album that changed rock forever. Includes 'Smells Like Teen Spirit'."
-                        ],
-                        [
-                            "title" => "The Miseducation",
-                            "artist" => "Lauryn Hill",
-                            "price" => 26.99,
-                            "category" => "R&B",
-                            "image" => "https://via.placeholder.com/300x300?text=Lauryn+Hill",
-                            "description" => "A groundbreaking fusion of soul, R&B, and hip-hop that won 5 Grammys."
-                        ],
-                        [
-                            "title" => "Electric Ladyland",
-                            "artist" => "Jimi Hendrix",
-                            "price" => 30.00,
-                            "category" => "Electronic",
-                            "image" => "https://via.placeholder.com/300x300?text=Electric+Ladyland",
-                            "description" => "Hendrix's psychedelic masterpiece featuring 'Voodoo Child'."
-                        ],
-                        [
-                            "title" => "AM",
-                            "artist" => "Arctic Monkeys",
-                            "price" => 29.00,
-                            "category" => "Rock",
-                            "image" => "https://via.placeholder.com/300x300?text=Arctic+Monkeys+AM",
-                            "description" => "A modern rock gem with 'Do I Wanna Know?' and 'R U Mine?'."
-                        ]
-                    ];
+                    // Fetch all products from database
+                    $products = DB::table('products')
+                        ->where('stock', '>', 0)
+                        ->get();
+                    
+                    // Map database fields to display format
+                    $vinylProductCatalog = $products->map(function($product) {
+                        return [
+                            'id' => $product->id,
+                            'title' => $product->productName,
+                            'artist' => $product->Artist,
+                            'price' => $product->Price,
+                            'category' => $product->genre,
+                            'image' => asset('images/album-cover/' . $product->productName . '.jpg'),
+                            'description' => "Album featuring {$product->songAmount} tracks. Available in stock: {$product->stock} units.",
+                            'songAmount' => $product->songAmount,
+                            'stock' => $product->stock
+                        ];
+                    })->toArray();
                 @endphp
 
                 <div class="product-catalog-grid">
@@ -122,7 +75,9 @@
                             <div class="product-card__footer">
                                 <p class="product-card__price">${{ number_format($productItem['price'], 2) }}</p>
                                 <div class="product-card__actions">
-                                    <button onclick="addToCart('{{ addslashes($productItem['title']) }}', '{{ addslashes($productItem['artist']) }}', '{{ $productItem['price'] }}', '{{ $productItem['image'] }}')" class="button button--add-to-cart">Add to Basket</button>
+                                    @if(Session::has('user_id'))
+                                        <button onclick="addToCart('{{ addslashes($productItem['title']) }}', '{{ addslashes($productItem['artist']) }}', '{{ $productItem['price'] }}', '{{ $productItem['image'] }}')" class="button button--add-to-cart">Add to Basket</button>
+                                    @endif
                                     <button onclick="showVinylInfo('{{ addslashes($productItem['title']) }}', '{{ addslashes($productItem['artist']) }}', '{{ $productItem['price'] }}', '{{ addslashes($productItem['category']) }}', '{{ $productItem['image'] }}', '{{ addslashes($productItem['description']) }}')" class="button button--info">Info</button>
                                 </div>
                             </div>
@@ -149,4 +104,75 @@
                     <div class="modal-info-label">Album Title</div>
                     <div class="modal-info-value" id="modalAlbumTitle"></div>
                 </div>
-                <div class="
+                <div class="modal-info-section">
+                    <div class="modal-info-label">Artist</div>
+                    <div class="modal-info-value" id="modalArtist"></div>
+                </div>
+                <div class="modal-info-section">
+                    <div class="modal-info-label">Category</div>
+                    <div class="modal-info-value" id="modalCategory"></div>
+                </div>
+                <div class="modal-price" id="modalPrice"></div>
+                <div class="modal-info-section">
+                    <div class="modal-info-label">About This Album</div>
+                    <div class="modal-description" id="modalDescription"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function filterByCategory(category) {
+            const productCards = document.querySelectorAll('.product-card');
+            const filterButtons = document.querySelectorAll('.category-filter-button');
+            
+            // Update active button
+            filterButtons.forEach(button => {
+                if (button.dataset.category === category) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            });
+            
+            // Filter products
+            productCards.forEach(card => {
+                if (category === 'All' || card.dataset.category === category) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+    </script>
+    <script>
+        function showVinylInfo(title, artist, price, category, image, description) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalAlbumTitle').textContent = title;
+            document.getElementById('modalArtist').textContent = artist;
+            document.getElementById('modalCategory').textContent = category;
+            document.getElementById('modalPrice').textContent = '$' + parseFloat(price).toFixed(2);
+            document.getElementById('modalImage').src = image;
+            document.getElementById('modalImage').alt = title + ' album cover';
+            document.getElementById('modalDescription').textContent = description;
+            
+            document.getElementById('vinylInfoModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(event) {
+            if (!event || event.target.id === 'vinylInfoModal') {
+                document.getElementById('vinylInfoModal').classList.remove('active');
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
