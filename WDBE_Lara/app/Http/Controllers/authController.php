@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
@@ -24,8 +25,8 @@ class AuthController extends Controller
             return back()->with('error', 'No account found with this email.');
         }
 
-        // Check if password matches
-        if ($user->password !== $request->password) {
+        // FIXED: Use password_verify for hashed passwords
+        if (!Hash::check($request->password, $user->password)) {
             return back()->with('error', 'Incorrect password.');
         }
 
@@ -42,13 +43,12 @@ class AuthController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
+            'email' => 'required|email|max:255|unique:accounts,email',
             'phone' => 'required|string|max:20',
-            'password' => 'required|min:6',
-            'password_confirmation' => 'required|same:password',
+            'password' => 'required|min:6|confirmed',
         ]);
 
-        // Check if email already exists
+        // Check if email already exists (redundant with unique validation, but safe)
         $existingUser = DB::table('accounts')
             ->where('email', $request->email)
             ->first();
@@ -57,12 +57,12 @@ class AuthController extends Controller
             return back()->with('error', 'An account with this email already exists.');
         }
 
-        // Insert new user into database
+        // FIXED: Hash the password before storing
         $userId = DB::table('accounts')->insertGetId([
             'username' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
-            'password' => $request->password,
+            'password' => Hash::make($request->password),
             'role' => 'user',
             'created_at' => now(),
             'updated_at' => now(),

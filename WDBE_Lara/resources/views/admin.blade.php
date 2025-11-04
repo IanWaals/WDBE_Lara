@@ -20,6 +20,10 @@
             </section>
 
             <section class="admin-section">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <a href="{{ route('admin.categories') }}" class="button button--secondary">Manage Categories</a>
+                </div>
+
                 @if(session('success'))
                     <div class="alert alert-success" style="padding: 1rem; margin-bottom: 1rem; background: #4ade80; color: white; border-radius: 0.5rem;">
                         {{ session('success') }}
@@ -61,11 +65,9 @@
                                 <label for="product-category" class="form-label">Category</label>
                                 <select id="product-category" name="category" class="form-input" required>
                                     @php
-                                        $availableCategories = [];
                                         $genres = \App\Models\Genre::all()->pluck('genreName')->toArray();
-                                        $availableCategories = array_merge($availableCategories, $genres);
                                     @endphp
-                                    @foreach($availableCategories as $categoryName)
+                                    @foreach($genres as $categoryName)
                                         <option value="{{ $categoryName }}">{{ $categoryName }}</option>
                                     @endforeach
                                 </select>
@@ -81,17 +83,22 @@
                                 <input type="number" id="product-stock" name="stock" class="form-input" placeholder="e.g., 55" required>
                             </div>
                         </div>
+
+                        <div class="form-group">
+                            <label for="product-description" class="form-label">Description</label>
+                            <textarea id="product-description" name="description" class="form-textarea" rows="4" placeholder="Enter product description..." required></textarea>
+                        </div>
                         
                         <div class="form-group">
-                            <label for="product-image" class="form-label">Album Cover Image</label>
+                            <label for="product-images" class="form-label">Album Cover Images (Multiple allowed)</label>
                             <div class="file-upload-wrapper">
-                                <input type="file" id="product-image" name="image" class="form-input-file" accept="image/*" required>
-                                <label for="product-image" class="file-upload-label">
-                                    <span class="file-upload-text">Choose Image</span>
-                                    <span class="file-upload-name" id="fileName">No file chosen</span>
+                                <input type="file" id="product-images" name="images[]" class="form-input-file" accept="image/*" multiple required>
+                                <label for="product-images" class="file-upload-label">
+                                    <span class="file-upload-text">Choose Images</span>
+                                    <span class="file-upload-name" id="fileName">No files chosen</span>
                                 </label>
                             </div>
-                            <div id="imagePreview" class="image-preview"></div>
+                            <div id="imagePreview" class="image-preview" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;"></div>
                         </div>
                         
                         <div class="form-actions">
@@ -149,8 +156,6 @@
         </footer>
     </div>
 
-    @include('components.loginregister')
-
     <!-- Edit Product Modal -->
     <div class="modal-overlay" id="editModal">
         <div class="login-modal">
@@ -171,6 +176,11 @@
                     <label for="edit-artist" class="form-label">Artist Name</label>
                     <input type="text" id="edit-artist" name="artist" class="form-input" required>
                 </div>
+
+                <div class="form-group">
+                    <label for="edit-description" class="form-label">Description</label>
+                    <textarea id="edit-description" name="description" class="form-textarea" rows="3" required></textarea>
+                </div>
                 
                 <div class="form-group">
                     <label for="edit-price" class="form-label">Price ($)</label>
@@ -180,7 +190,7 @@
                 <div class="form-group">
                     <label for="edit-category" class="form-label">Category</label>
                     <select id="edit-category" name="category" class="form-input" required>
-                        @foreach($availableCategories as $categoryName)
+                        @foreach($genres as $categoryName)
                             <option value="{{ $categoryName }}">{{ $categoryName }}</option>
                         @endforeach
                     </select>
@@ -205,33 +215,42 @@
     </div>
 
     <script>
-    // Store products data from PHP
     const productsData = @json($products);
-    console.log('Products data:', productsData); // Debug: check data structure
-
-    // Setup CSRF token for AJAX requests
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-    // Edit product - open modal with data from database
-    function editProduct(id) {
-        console.log('Editing product ID:', id); // Debug
-        console.log('All products:', productsData); // Debug
+    // Multiple image preview
+    document.getElementById('product-images').addEventListener('change', function(e) {
+        const files = e.target.files;
+        const fileCount = files.length;
+        document.getElementById('fileName').textContent = fileCount > 0 ? `${fileCount} file(s) selected` : 'No files chosen';
         
-        // Try both possible ID field names
+        const preview = document.getElementById('imagePreview');
+        preview.innerHTML = '';
+        
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.style.cssText = 'max-width: 150px; max-height: 150px; border-radius: 8px; border: 2px solid #248232; object-fit: cover;';
+                preview.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+
+    function editProduct(id) {
         const product = productsData.find(p => p.productID == id || p.id == id);
         
         if (!product) {
-            console.error('Product not found with ID:', id);
             showNotification('Product not found', 'error');
             return;
         }
         
-        console.log('Found product:', product); // Debug
-        
-        // Use the correct property names from your database
         document.getElementById('edit-product-id').value = product.productID || product.id;
         document.getElementById('edit-title').value = product.productName;
         document.getElementById('edit-artist').value = product.Artist;
+        document.getElementById('edit-description').value = product.description || '';
         document.getElementById('edit-price').value = product.Price;
         document.getElementById('edit-category').value = product.genre;
         document.getElementById('edit-songs').value = product.songAmount;
@@ -240,27 +259,22 @@
         document.getElementById('editModal').classList.add('active');
     }
 
-    // Update product via AJAX
     document.getElementById('editProductForm').addEventListener('submit', function(e) {
         e.preventDefault();
-
-        console.log("Submitting edit form"); // Debug
         
         const productId = document.getElementById('edit-product-id').value;
         const formData = new FormData(e.target);
         
-        // Convert FormData to JSON
         const data = {
             title: formData.get('title'),
             artist: formData.get('artist'),
+            description: formData.get('description'),
             price: formData.get('price'),
             category: formData.get('category'),
             songs: formData.get('songs'),
             stock: formData.get('stock'),
             _method: 'PUT'
         };
-        
-        console.log('Updating product:', productId, data); // Debug
         
         fetch(`/admin/products/${productId}`, {
             method: 'POST',
@@ -271,40 +285,28 @@
             },
             body: JSON.stringify(data)
         })
-        .then(response => {
-            console.log('Update response status:', response.status); // Debug
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log('Update response:', data); // Debug
             if (data.success) {
                 closeEditModal();
                 showNotification(data.message);
-                // Reload page to show updated data
                 setTimeout(() => location.reload(), 1000);
             } else {
                 showNotification(data.message || 'Error updating product', 'error');
             }
         })
         .catch(error => {
-            console.error('Error updating product:', error);
+            console.error('Error:', error);
             showNotification('Error updating product: ' + error.message, 'error');
         });
     });
 
-    // Close edit modal
     function closeEditModal() {
         document.getElementById('editModal').classList.remove('active');
     }
 
-    // Delete product via AJAX
     function deleteProduct(id) {
-        console.log('Attempting to delete product ID:', id); // Debug
-        
-        if (confirm('Are you sure you want to delete this product?')) {
+        if (confirm('Are you sure you want to delete this product? This will also delete all associated images.')) {
             fetch(`/admin/products/${id}`, {
                 method: 'POST',
                 headers: {
@@ -312,55 +314,33 @@
                     'X-CSRF-TOKEN': csrfToken,
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({
-                    _method: 'DELETE'
-                })
+                body: JSON.stringify({ _method: 'DELETE' })
             })
-            .then(response => {
-                console.log('Delete response status:', response.status); // Debug
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                console.log('Delete response:', data); // Debug
                 if (data.success) {
                     showNotification(data.message);
-                    // Remove the row from table
                     const row = document.querySelector(`tr[data-product-id="${id}"]`);
-                    if (row) {
-                        row.remove();
-                    }
-                    // Reload page after short delay
+                    if (row) row.remove();
                     setTimeout(() => location.reload(), 1000);
                 } else {
                     showNotification(data.message || 'Error deleting product', 'error');
                 }
             })
             .catch(error => {
-                console.error('Error deleting product:', error);
+                console.error('Error:', error);
                 showNotification('Error deleting product: ' + error.message, 'error');
             });
         }
     }
 
-    // Show notification
     function showNotification(message, type = 'success') {
         const notification = document.createElement('div');
-        notification.className = 'notification';
         notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 1rem 1.5rem;
+            position: fixed; top: 20px; right: 20px; padding: 1rem 1.5rem;
             background: ${type === 'success' ? '#4ade80' : '#ef4444'};
-            color: white;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            z-index: 10000;
-            opacity: 0;
-            transition: opacity 0.3s;
+            color: white; border-radius: 0.5rem; z-index: 10000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); opacity: 0; transition: opacity 0.3s;
         `;
         notification.textContent = message;
         document.body.appendChild(notification);
@@ -372,26 +352,9 @@
         }, 3000);
     }
 
-    // Close modal on overlay click
     document.getElementById('editModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeEditModal();
-        }
+        if (e.target === this) closeEditModal();
     });
-
-    // File upload preview
-    document.getElementById('product-image').addEventListener('change', function(e) {
-        const fileName = e.target.files[0]?.name || 'No file chosen';
-        document.getElementById('fileName').textContent = fileName;
-        
-        // Show image preview
-        const preview = document.getElementById('imagePreview');
-        if (e.target.files && e.target.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                preview.innerHTML = `<img src="${e.target.result}" style="max-width: 200px; margin-top: 10px; border-radius: 8px;">`;
-            };
-            reader.readAsDataURL(e.target.files[0]);
-        }
-    });
-</script>
+    </script>
+</body>
+</html>
